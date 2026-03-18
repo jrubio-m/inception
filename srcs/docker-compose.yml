@@ -8,10 +8,46 @@ services:
       - db_password
       - db_root_password
     volumes:
-      mariadb_data:/var/lib/mysql
+      - mariadb_data:/var/lib/mysql
     networks:
       - inception
-volumes:
-networks:
-secrets:
+  wordpress:
+    build: ./requirements/wordpress
+    container_name: wordpress
+    env_file:
+      - .env
+    secrets:
+      - db_password
+    volumes:
+      - wordpress_data:/var/www/html
+    depends_on:
+      - mariadb
+    networks:
+      - inception
+  nginx:
+    build: ./requirements/nginx
+    container_name: nginx
+    env_file:
+      - .env
+    ports:
+      - "443:443"
+    volumes:
+      - wordpress_data:/var/www/html
+    depends_on:
+      - wordpress
+    networks:
+      - inception
 
+volumes:
+  mariadb_data:
+  wordpress_data:
+
+networks:
+  inception:
+    driver: bridge
+
+secrets:
+  db_password:
+    file: ../secrets/db_password.txt
+  db_root_password:
+    file: ../secrets/db_root_password.txt
