@@ -72,10 +72,33 @@ sudo apt install -y \
 * `lsb-release`: Provides distribution information
 
 ---
+## SSH Installation (Optional)
+
+### Install ssh
+
+```bash
+sudo apt update 
+sudo apt install -y ssh
+```
+### Start and enable ssh service
+
+```bash
+systemctl start ssh
+systemctl enable ssh
+```
+
+### Allow ssh in ufw
+
+```bash
+sudo ufw allow
+```
+
+### Purpose
+* Exchange the proyect repository remotely.
 
 ## Docker Installation
 
-### 6.1 Add Docker GPG Key
+### Add Docker GPG Key
 
 ```bash
 sudo mkdir -p /etc/apt/keyrings
