@@ -63,7 +63,7 @@ Keeping the system minimal avoids unnecessary overhead and improves performance 
 
 ---
 
-### * _SSH Installation (Optional)_
+* ### _SSH Installation (Optional)_
 
 Install ssh:
 ```bash
@@ -84,7 +84,7 @@ sudo ufw allow
 
 ---
 
-### * _Docker Installation_
+* ### _Docker Installation_
 
 Docker must be installed using the official Docker repository to ensure up-to-date and secure packages.
 
@@ -113,7 +113,7 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin d
 
 ---
 
-### * _Docker Service Configuration_
+* ### _Docker Service Configuration_
 
 * Starts Docker service immediately
 * Enables Docker to start automatically on system boot
@@ -125,7 +125,7 @@ sudo systemctl enable docker
 
 ---
 
-### * _Docker Permissions Setup_
+* ### _Docker Permissions Setup_
 
 By default, Docker requires root privileges to run commands.
 
