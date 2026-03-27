@@ -1,4 +1,35 @@
+version: "3.8"
+
 services:
+
+  nginx:
+    build: ./requirements/nginx
+    container_name: nginx
+    ports:
+      - "443:443"
+    volumes:
+      - wordpress_data:/var/www/html
+    networks:
+      - inception
+    depends_on:
+      - wordpress
+    restart: always
+
+  wordpress:
+    build: ./requirements/wordpress
+    container_name: wordpress
+    env_file:
+      - .env
+    secrets:
+      - db_password
+    volumes:
+      - wordpress_data:/var/www/html
+    networks:
+      - inception
+    depends_on:
+      - mariadb
+    restart: always
+
   mariadb:
     build: ./requirements/mariadb
     container_name: mariadb
@@ -11,40 +42,26 @@ services:
       - mariadb_data:/var/lib/mysql
     networks:
       - inception
-  wordpress:
-    build: ./requirements/wordpress
-    container_name: wordpress
-    env_file:
-      - .env
-    secrets:
-      - db_password
-    volumes:
-      - wordpress_data:/var/www/html
-    depends_on:
-      - mariadb
-    networks:
-      - inception
-  nginx:
-    build: ./requirements/nginx
-    container_name: nginx
-    env_file:
-      - .env
-    ports:
-      - "443:443"
-    volumes:
-      - wordpress_data:/var/www/html
-    depends_on:
-      - wordpress
-    networks:
-      - inception
-
-volumes:
-  mariadb_data:
-  wordpress_data:
+    restart: always
 
 networks:
   inception:
     driver: bridge
+
+volumes:
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/jrubio-m/data/wordpress
+
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/jrubio-m/data/mariadb
 
 secrets:
   db_password:
