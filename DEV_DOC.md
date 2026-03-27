@@ -253,8 +253,8 @@ services:
     env_file:
       - .env
     secrets:
-      -db_password
-      -db_root_password
+      - db_password
+      - db_root_password
     volumes:
       - mariadb_data:/var/lib/mysql
     networks:
@@ -507,6 +507,8 @@ However, depends_on does not mean that the dependent service is fully ready to a
 
 That distinction is important in practice.
 
+For this reason, services often implement their own waiting logic (for example, retrying database connections) instead of relying only on `depends_on`.
+
 ```yaml
     restart: always
 ```
@@ -753,3 +755,113 @@ Sensitive data must never be:
 - Committed to the Git repository.
 
 Using Docker secrets helps satisfy this requirement.
+
+---
+---
+---
+
+## Step 4: Dockerfiles
+
+Dockerfiles are used to define how a Docker image is built.
+
+They describe:
+
+- The base system used.
+- Which software is installed.
+- Which files are copied into the image.
+- Which command is executed when the container starts.
+
+Each service in the project (nginx, wordpress, mariadb) has its own Dockerfile.
+
+---
+
+* ### _MariaDB Dockerfile_
+
+The MariaDB image is built from a custom Dockerfile located in:
+
+```bash
+srcs/requirements/mariadb/Dockerfile
+
+_Example:_
+```dockerfile
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y mariadb-server && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY ./conf/mariadb-server.cnf /etc/mysql/mariadb.conf.d/
+COPY ./tools/mariadb.sh /usr/local/bin/
+
+RUN chmod +x /usr/local/bin/mariadb.sh
+
+ENTRYPOINT ["/usr/local/bin/mariadb.sh"]
+```
+
+_Explanation_
+```dockerfile
+FROM debian:bookworm-slim
+```
+Defines the base image used to build the container.
+
+A minimal Debian system is used to reduce resource consumption and keep the image lightweight.
+```dockerfile
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y mariadb-server && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+```
+Executes commands during the image build process.
+
+This step:
+
+- Updates package lists.
+- Upgrades installed packages.
+- Installs MariaDB server.
+- Removes unnecessary cache files.
+
+Cleaning the package lists reduces the final image size.
+
+```dockerfile
+COPY ./conf/mariadb-server.cnf /etc/mysql/mariadb.conf.d/
+```
+
+Copies the custom MariaDB configuration file into the container.
+
+This allows overriding default settings and adapting MariaDB to work correctly inside Docker.
+
+```dockerfile
+COPY ./tools/mariadb.sh /usr/local/bin/
+```
+
+Copies the startup script into the container.
+
+This script will be executed when the container starts and is responsible for initializing and launching MariaDB.
+
+```dockerfile
+RUN chmod +x /usr/local/bin/mariadb.sh
+```
+
+Makes the startup script executable.
+
+Without this step, Docker would not be able to run the script.
+
+```dockerfile
+ENTRYPOINT ["/usr/local/bin/mariadb.sh"]
+```
+Defines the main command executed when the container starts.
+
+Using ENTRYPOINT ensures that the container always runs the initialization script.
+
+This script will:
+
+- Read Docker secrets.
+- Initialize the database if needed.
+- Create users and permissions.
+- Start MariaDB in the foreground.
+
+This approach avoids using forbidden infinite loops and ensures the container runs a proper main process.
+
