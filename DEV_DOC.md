@@ -774,15 +774,16 @@ They describe:
 Each service in the project (nginx, wordpress, mariadb) has its own Dockerfile.
 
 ---
-
 * ### _MariaDB Dockerfile_
 
-The MariaDB image is built from a custom Dockerfile located in:
+The MariaDB image is built from:
 
 ```bash
 srcs/requirements/mariadb/Dockerfile
+```
 
-_Example:_
+_Content:_
+
 ```dockerfile
 FROM debian:bookworm-slim
 
@@ -800,68 +801,192 @@ RUN chmod +x /usr/local/bin/mariadb.sh
 ENTRYPOINT ["/usr/local/bin/mariadb.sh"]
 ```
 
-_Explanation_
+_Explanation:_
+
 ```dockerfile
 FROM debian:bookworm-slim
 ```
+
 Defines the base image used to build the container.
 
-A minimal Debian system is used to reduce resource consumption and keep the image lightweight.
-```dockerfile
+```dockerfile 
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y mariadb-server && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 ```
-Executes commands during the image build process.
 
-This step:
-
-- Updates package lists.
-- Upgrades installed packages.
-- Installs MariaDB server.
-- Removes unnecessary cache files.
-
-Cleaning the package lists reduces the final image size.
+Installs MariaDB and cleans unnecessary package data to reduce image size.
 
 ```dockerfile
 COPY ./conf/mariadb-server.cnf /etc/mysql/mariadb.conf.d/
 ```
 
-Copies the custom MariaDB configuration file into the container.
-
-This allows overriding default settings and adapting MariaDB to work correctly inside Docker.
+Copies the MariaDB configuration file into the container.
 
 ```dockerfile
 COPY ./tools/mariadb.sh /usr/local/bin/
 ```
 
-Copies the startup script into the container.
-
-This script will be executed when the container starts and is responsible for initializing and launching MariaDB.
+Copies the startup script used to initialize and launch MariaDB.
 
 ```dockerfile
 RUN chmod +x /usr/local/bin/mariadb.sh
 ```
 
-Makes the startup script executable.
+Makes the script executable.
 
-Without this step, Docker would not be able to run the script.
-
-```dockerfile
+```dockerfile 
 ENTRYPOINT ["/usr/local/bin/mariadb.sh"]
 ```
-Defines the main command executed when the container starts.
 
-Using ENTRYPOINT ensures that the container always runs the initialization script.
+Defines the command executed when the container starts.
 
-This script will:
+---
 
-- Read Docker secrets.
-- Initialize the database if needed.
-- Create users and permissions.
-- Start MariaDB in the foreground.
+* ### _WordPress Dockerfile_
 
-This approach avoids using forbidden infinite loops and ensures the container runs a proper main process.
+The WordPress image is built from:
 
+```bash
+srcs/requirements/wordpress/Dockerfile
+```
+
+_Content:_
+
+```dockerfile
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y \
+    php-fpm \
+    php-mysql \
+    curl \
+    mariadb-client && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY ./conf/www.conf /etc/php/8.2/fpm/pool.d/www.conf
+COPY ./tools/wordpress.sh /usr/local/bin/
+
+RUN chmod +x /usr/local/bin/wordpress.sh
+
+ENTRYPOINT ["/usr/local/bin/wordpress.sh"]
+```
+
+_Explanation:_
+
+```dockerfile
+FROM debian:bookworm-slim
+```
+
+Defines the base image.
+
+```dockerfile
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y \
+    php-fpm \
+    php-mysql \
+    curl \
+    mariadb-client && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+```
+
+Installs PHP-FPM and required dependencies to run WordPress and connect to MariaDB.
+
+```dockerfile
+COPY ./conf/www.conf /etc/php/8.2/fpm/pool.d/www.conf
+```
+
+Copies the PHP-FPM configuration file.
+
+```dockerfile
+COPY ./tools/wordpress.sh /usr/local/bin/
+```
+
+Copies the startup script responsible for configuring WordPress.
+
+```dockerfile
+RUN chmod +x /usr/local/bin/wordpress.sh
+```
+
+Makes the script executable.
+
+```dockerfile
+ENTRYPOINT ["/usr/local/bin/wordpress.sh"]
+```
+
+Defines the startup command of the container.
+
+---
+
+* ### _NGINX Dockerfile_
+
+The NGINX image is built from:
+
+```bash
+srcs/requirements/nginx/Dockerfile
+```
+
+_Content:_
+
+```dockerfile
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y nginx openssl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY ./conf/nginx.conf /etc/nginx/sites-available/default
+COPY ./tools/nginx.sh /usr/local/bin/
+
+RUN chmod +x /usr/local/bin/nginx.sh
+
+ENTRYPOINT ["/usr/local/bin/nginx.sh"]
+```
+_Explanation:_
+
+```dockerfile
+FROM debian:bookworm-slim
+```
+
+Defines the base image.
+
+```dockerfile
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y nginx openssl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+```
+
+Installs NGINX and OpenSSL for HTTPS support.
+
+```dockerfile
+COPY ./conf/nginx.conf /etc/nginx/sites-available/default
+```
+
+Copies the NGINX configuration file.
+
+```dockerfile
+COPY ./tools/nginx.sh /usr/local/bin/
+```
+
+Copies the startup script used to launch NGINX.
+
+```dockerfile
+RUN chmod +x /usr/local/bin/nginx.sh
+```
+
+Makes the script executable.
+
+```dockerfile
+ENTRYPOINT ["/usr/local/bin/nginx.sh"]
+```
+Defines the command executed when the container starts.
