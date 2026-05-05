@@ -159,16 +159,51 @@ _This setup is acceptable in a local development environment (such as this proje
 
 The project must follow a strict structure.
 
+* ### _Base directories_
+
 Create the base directories:
 ```bash
-mkdir -p ~/inception/srcs/requirements
+mkdir -p ~/inception/srcs/requirements/mariadb/tools
+mkdir -p ~/inception/srcs/requirements/mariadb/conf
+mkdir -p ~/inception/srcs/requirements/wordpress/tools
+mkdir -p ~/inception/srcs/requirements/wordpress/conf
+mkdir -p ~/inception/srcs/requirements/nginx/conf
 mkdir -p ~/inception/secrets
 ```
 
-Navigate into the project directory:
+* ### _Volumes_
+
+Create the directories where the volumes will be stored
 ```bash
-cd ~/inception
+mkdir -p ~/data/mariadb
+mkdir -p ~/data/wordpress
 ```
+
+* ### _Secrets and Enviroment_
+
+Now we need to create the secrets and enviroment files (Only for tests. This can't be upload in the repo)
+```bash
+touch ~/inception/secrets/db_password.txt
+touch ~/inception/secrets/db_root_password.txt
+touch ~/inception/secrets/wp_password.txt
+touch ~/inception/secrets/wp_admin_password.txt
+touch ~/inception/src/.env
+```
+
+The "password" files must contain:
+- Only the password we want to use in each case.
+The ".env" file must contain:
+- DOMAIN_NAME=<login>.42.fr
+
+- DB_NAME=wordpress
+- DB_USER=wpuser
+- DB_HOST=mariadb
+
+- WP_TITTLE=Inception
+- WP_ADMIN_USER=admin
+- WP_ADMIN_EMAIL=admin@example.com
+- WP_USER=user
+- WP_USER_EMAIL=user@example.com
 
 ---
 ---
@@ -215,8 +250,6 @@ The `docker-compose.yml` file defines the full infrastructure of the project.
 Final structure:
 
 ```yaml
-version: "3.8"
-
 services:
 
   nginx:
@@ -239,6 +272,8 @@ services:
       - .env
     secrets:
       - db_password
+      - wp_password
+      - wp_admin_password
     volumes:
       - wordpress_data:/var/www/html
     networks:
@@ -285,21 +320,15 @@ secrets:
     file: ../secrets/db_password.txt
   db_root_password:
     file: ../secrets/db_root_password.txt
+  wp_password:
+    file: ../secrets/wp_password.txt
+  wp_admin_password:
+    file: ../secrets/wp_admin_password.txt
 ```
 
 ---
 
 * ### _Explanation_
-
-```yaml
-version: "3.8"
-```
-
-This line indicates the Compose file format version.
-
-It defines which syntax is expected in the file and helps keep the configuration explicit and consistent.
-
-Even if modern Docker Compose versions are more flexible about this field, it is still commonly included for clarity.
 
 ```yaml
 services:
@@ -990,3 +1019,34 @@ Makes the script executable.
 ENTRYPOINT ["/usr/local/bin/nginx.sh"]
 ```
 Defines the command executed when the container starts.
+
+## Step 5: Configuration files, scripts and entrypoints
+
+* ### _mariadb-server.cnf_ 
+
+The goal of mariadb-server.cnf is:
+
+- Let MariaDB listen within the Docker network.
+- Use `/var/lib/mysql` as a data directory.
+- Do not depend on localhost.
+- Be compatible with WordPress/PHP.
+
+* ### _mariadb.sh_
+
+This script is responsible for initializing and starting the MariaDB server inside the container.
+
+- Enable strict mode with `set -e` to stop execution on errors.
+- Create the `/run/mysqld` directory and assign proper permissions so MariaDB can create its socket and PID files.
+- Read database passwords from Docker secrets.
+- Check if the database has already been initialized by verifying the existence of `/var/lib/mysql/mysql`.
+- If not initialized:
+  - Run `mysql_install_db` to create the initial database structure.
+  - Start MariaDB temporarily using `mysqld_safe` in the background.
+  - Wait for the server to be ready.
+  - Execute SQL commands to:
+    - Set the root password
+    - Create the application database
+    - Create a user accessible from any host (`'%'`)
+    - Grant privileges on the database
+  - Shut down the temporary MariaDB instance using `mysqladmin`.
+- Finally, start MariaDB in the foreground using `exec mysqld` so it becomes the main container process.
