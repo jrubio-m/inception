@@ -1050,3 +1050,16 @@ This script is responsible for initializing and starting the MariaDB server insi
     - Grant privileges on the database
   - Shut down the temporary MariaDB instance using `mysqladmin`.
 - Finally, start MariaDB in the foreground using `exec mysqld` so it becomes the main container process.
+* ### _www.conf_ 
+* ### _wordpress.sh_
+* ### _nginx.conf_
+## Step 6: Test and run
+
+* ### _Util commands_
+```bash
+docker compose down -v
+docker rmi srcs-mariadb:latest 
+docker rmi srcs-wordpress:latest 
+sudo rm -rf /home/jrubio-m/data/mariadb/*
+sudo rm -rf /home/jrubio-m/data/wordpress/*
+```
