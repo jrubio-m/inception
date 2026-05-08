@@ -72,3 +72,4 @@ secrets:
     file: ../secrets/wp_password.txt
   wp_admin_password:
     file: ../secrets/wp_admin_password.txt
+

@@ -1,10 +1,11 @@
 
 * ### _.env_
 
-The minimum variables that the file must contain:
+Command to insert the minimum variables in .env that the file must contain:
 
 ```bash
-DOMAIN_NAME=<login>.42.fr
+
+echo "DOMAIN_NAME=<login>.42.fr
 
 DB_NAME=
 DB_USER=
@@ -15,12 +16,14 @@ WP_ADMIN_USER=
 WP_ADMIN_EMAIL=
 WP_USER=
 WP_USER_EMAIL=
+" > ~/inception/.env
+
 ```
 * ### _secrets_
 
-The password files you will need:
+Command for create the password files you will need:
+```bash
 
-- db_password.txt
-- db_root_password.txt
-- wp_password.txt
-- wp_admin_password.txt
+touch db_password.txt db_root_password.txt wp_password.txt wp_admin_password.txt
+
+```
