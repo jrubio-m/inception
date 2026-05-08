@@ -16,14 +16,14 @@ WP_ADMIN_USER=
 WP_ADMIN_EMAIL=
 WP_USER=
 WP_USER_EMAIL=
-" > ~/inception/.env
+" > ~/inception/srcs/.env
 
 ```
 * ### _secrets_
 
 Command for create the password files you will need:
 ```bash
-
+mkdir -p ~/inception/secrets
 touch db_password.txt db_root_password.txt wp_password.txt wp_admin_password.txt
-
+mv *.txt ~/inception/secrets
 ```
