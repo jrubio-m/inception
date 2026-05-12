@@ -68,11 +68,11 @@ If Docker is not installed, install it following the official Docker documentati
 - Docker Engine installation documentation
 - Docker Compose installation documentation
 
-The following directories must exist on the host machine:
+The local data directories are created by `make setup`. If you want to create them manually:
 
 ```bash
-mkdir -p /home/jrubio-m/data/mariadb
-mkdir -p /home/jrubio-m/data/wordpress
+mkdir -p ~/data/mariadb
+mkdir -p ~/data/wordpress
 ```
 The local domain must be added to /etc/hosts:
 
@@ -85,13 +85,13 @@ Add:
 127.0.0.1 jrubio-m.42.fr
 ```
 
-Create a secrets directory at the root of the repository:
+The environment and secret files can be generated with:
 
 ```bash
-mkdir -p secrets
+make setup
 ```
 
-Create the required secret files:
+This creates a `secrets` directory at the root of the repository with the required password files:
 
 ```bash
 secrets/db_password.txt
@@ -102,27 +102,22 @@ secrets/wp_password.txt
 
 Each file must contain the corresponding password.
 
-Create the .env file inside srcs:
+For repository correction, the files are created empty so no password is stored in the submitted version.
+After running `make setup`, edit these files and write one password in each file before running `make all`.
 
-```bash
-touch srcs/.env
+For local testing only, you may temporarily replace the empty `printf ""` values in the `Makefile` with your own passwords so `make setup` creates the secret files already filled.
+Do not commit or submit the `Makefile` with real passwords.
+
+It also creates the `.env` file inside `srcs`. The file must contain at least:
+
 ```
-
-must contain at least:
-
-```
-DOMAIN_NAME=jrubio-m.42.fr
-
-DB_NAME=
-DB_USER=
-DB_HOST=
-
+DB_NAME=test
+DB_USER=usertest
 WP_TITLE=Inception
-WP_ADMIN_USER=
-WP_ADMIN_EMAIL=
-
-WP_USER=
-WP_USER_EMAIL=
+WP_ADMIN_USER=wpadtest
+WP_ADMIN_EMAIL=wpad@wp.wp
+WP_USER=wptest
+WP_USER_EMAIL=wp@wp.wp
 ```
 
 Passwords must not be stored in .env.
@@ -131,7 +126,9 @@ Passwords must not be stored in .env.
 
 From the root of the repository, run:
 
-`make`
+```bash
+make all
+```
 
 Once the containers are running, open:
 
@@ -158,7 +155,7 @@ https://jrubio-m.42.fr/wp-admin
 
 The admin user is defined in the .env file:
 
-`WP_ADMIN_USER=jrubio_admin`
+`WP_ADMIN_USER=wpadtest`
 
 The admin password is read from:
 
