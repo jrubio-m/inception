@@ -37,7 +37,7 @@ fclean: clean
 	@echo "Cleaning env"
 	@rm -f ./srcs/.env
 	@rm -rf secrets
-	@rm -rf ~/data/mariadb
-	@rm -rf ~/data/wordpress
+	@sudo rm -rf ~/data/mariadb
+	@sudo rm -rf ~/data/wordpress
 
 re: fclean setup all
