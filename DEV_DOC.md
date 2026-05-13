@@ -179,31 +179,32 @@ mkdir -p ~/data/mariadb
 mkdir -p ~/data/wordpress
 ```
 
-* ### _Secrets and Enviroment_
+* ### _Secrets and Environment_
 
-Now we need to create the secrets and enviroment files (Only for tests. This can't be upload in the repo)
+Now we need to create the secrets and environment files (Only for tests. This can't be upload in the repo)
 ```bash
-touch ~/inception/secrets/db_password.txt
-touch ~/inception/secrets/db_root_password.txt
-touch ~/inception/secrets/wp_password.txt
-touch ~/inception/secrets/wp_admin_password.txt
-touch ~/inception/src/.env
+printf "" > ~/inception/secrets/db_password.txt
+printf "" > ~/inception/secrets/db_root_password.txt
+printf "" > ~/inception/secrets/wp_password.txt
+printf "" > ~/inception/secrets/wp_admin_password.txt
+chmod 600 ~/inception/secrets/db_password.txt ~/inception/secrets/db_root_password.txt ~/inception/secrets/wp_password.txt ~/inception/secrets/wp_admin_password.txt
+touch ~/inception/srcs/.env
 ```
 
 The "password" files must contain:
 - Only the password we want to use in each case.
+- They are created empty on purpose so no password is stored in the repository correction version.
+- After creating them, each file must be filled manually before running the containers.
+
 The ".env" file must contain:
-- DOMAIN_NAME=<login>.42.fr
+- DB_NAME=test
+- DB_USER=usertest
 
-- DB_NAME=wordpress
-- DB_USER=wpuser
-- DB_HOST=mariadb
-
-- WP_TITTLE=Inception
-- WP_ADMIN_USER=admin
-- WP_ADMIN_EMAIL=admin@example.com
-- WP_USER=user
-- WP_USER_EMAIL=user@example.com
+- WP_TITLE=Inception
+- WP_ADMIN_USER=wpadtest
+- WP_ADMIN_EMAIL=wpad@wp.wp
+- WP_USER=wptest
+- WP_USER_EMAIL=wp@wp.wp
 
 ---
 ---
@@ -306,14 +307,14 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /home/<login>/data/wordpress
+      device: ~/data/wordpress
 
   mariadb_data:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /home/<login>/data/mariadb
+      device: ~/data/mariadb
 
 secrets:
   db_password:
@@ -693,7 +694,7 @@ This tells the local volume driver to bind the volume storage to a specific host
 
 Even though this internally relies on bind behavior, it is still declared as a Docker named volume in the Compose file, which is why it is used to satisfy the subject requirement.
 
-Thwe important point is that the service mounts a named volume, not a direct bind mount written inline in the service definition.
+The important point is that the service mounts a named volume, not a direct bind mount written inline in the service definition.
 
 ```yaml
       device:
@@ -701,16 +702,16 @@ Thwe important point is that the service mounts a named volume, not a direct bin
 
 This sets the real host path where the volume data is stored.
 
-This is required by the subject, which states that both named volumes must store their data under /home/login/data on the host machine.
+This is required by the subject, which states that both named volumes must store their data under the login user's data directory on the host machine.
 
 Wordpress volume:
 ```yaml
-/home/<login>/data/wordpress
+~/data/wordpress
 ```
 
 MariaDB volume:
 ```yaml
-/home/<login>/data/mariadb
+~/data/mariadb
 ```
 
 Before launching the project, these directories must exist on the host system and use the correct login name.
@@ -743,10 +744,20 @@ MariaDB needs:
   db_root_password
 ```
 
-WordPress only needs:
+WordPress needs:
 - the database user password to connect to MariaDB.
 ```yaml
   db_password
+```
+
+- the admin password to install the WordPress administrator.
+```yaml
+  wp_admin_password
+```
+
+- the regular user password.
+```yaml
+  wp_password
 ```
 
 _Why Secrets Are Used Instead of Environment Variables_
@@ -820,7 +831,8 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y mariadb-server && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* \
+    rm -rf /var/lib/mysql/*
 
 COPY ./conf/mariadb-server.cnf /etc/mysql/mariadb.conf.d/
 COPY ./tools/mariadb.sh /usr/local/bin/
@@ -843,7 +855,8 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y mariadb-server && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* \
+    rm -rf /var/lib/mysql/*
 ```
 
 Installs MariaDB and cleans unnecessary package data to reduce image size.
@@ -897,8 +910,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
+    chmod +x wp-cli.phar && \
+    mv wp-cli.phar /usr/local/bin/wp
+
 COPY ./conf/www.conf /etc/php/8.2/fpm/pool.d/www.conf
-COPY ./tools/wordpress.sh /usr/local/bin/
+COPY ./tools/wordpress.sh /usr/local/bin/wordpress.sh
 
 RUN chmod +x /usr/local/bin/wordpress.sh
 
@@ -928,13 +945,21 @@ RUN apt-get update && \
 Installs PHP-FPM and required dependencies to run WordPress and connect to MariaDB.
 
 ```dockerfile
+RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
+    chmod +x wp-cli.phar && \
+    mv wp-cli.phar /usr/local/bin/wp
+```
+
+Installs WP-CLI, which is used by `wordpress.sh` to download and configure WordPress.
+
+```dockerfile
 COPY ./conf/www.conf /etc/php/8.2/fpm/pool.d/www.conf
 ```
 
 Copies the PHP-FPM configuration file.
 
 ```dockerfile
-COPY ./tools/wordpress.sh /usr/local/bin/
+COPY ./tools/wordpress.sh /usr/local/bin/wordpress.sh
 ```
 
 Copies the startup script responsible for configuring WordPress.
@@ -972,12 +997,17 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /etc/nginx/ssl && \
+    openssl req -x509 -nodes \
+        -out /etc/nginx/ssl/nginx.crt \
+        -keyout /etc/nginx/ssl/nginx.key \
+        -subj "/C=ES/ST=Madrid/L=Madrid/O=42/OU=42/CN=jrubio-m.42.fr" \
+        -newkey rsa:2048 \
+        -days 365
+
 COPY ./conf/nginx.conf /etc/nginx/sites-available/default
-COPY ./tools/nginx.sh /usr/local/bin/
 
-RUN chmod +x /usr/local/bin/nginx.sh
-
-ENTRYPOINT ["/usr/local/bin/nginx.sh"]
+CMD ["nginx", "-g", "daemon off;"]
 ```
 _Explanation:_
 
@@ -998,25 +1028,25 @@ RUN apt-get update && \
 Installs NGINX and OpenSSL for HTTPS support.
 
 ```dockerfile
+RUN mkdir -p /etc/nginx/ssl && \
+    openssl req -x509 -nodes \
+        -out /etc/nginx/ssl/nginx.crt \
+        -keyout /etc/nginx/ssl/nginx.key \
+        -subj "/C=ES/ST=Madrid/L=Madrid/O=42/OU=42/CN=jrubio-m.42.fr" \
+        -newkey rsa:2048 \
+        -days 365
+```
+
+Creates the self-signed TLS certificate used by NGINX.
+
+```dockerfile
 COPY ./conf/nginx.conf /etc/nginx/sites-available/default
 ```
 
 Copies the NGINX configuration file.
 
 ```dockerfile
-COPY ./tools/nginx.sh /usr/local/bin/
-```
-
-Copies the startup script used to launch NGINX.
-
-```dockerfile
-RUN chmod +x /usr/local/bin/nginx.sh
-```
-
-Makes the script executable.
-
-```dockerfile
-ENTRYPOINT ["/usr/local/bin/nginx.sh"]
+CMD ["nginx", "-g", "daemon off;"]
 ```
 Defines the command executed when the container starts.
 
@@ -1053,13 +1083,229 @@ This script is responsible for initializing and starting the MariaDB server insi
 * ### _www.conf_ 
 * ### _wordpress.sh_
 * ### _nginx.conf_
-## Step 6: Test and run
+
+---
+---
+---
+
+## Step 6: Makefile
+
+The `Makefile` is used to simplify the commands needed to prepare, run, stop, clean, and rebuild the project.
+
+It must be executed from the root of the repository.
+
+* ### _all_
+
+```make
+all: check
+	@echo "Starting the app"
+	@docker compose -f srcs/docker-compose.yml up
+```
+
+This is the main target.
+
+It first runs `check` to verify that the required files exist, then starts the infrastructure using Docker Compose.
+
+The Compose file is located at:
+
+```bash
+srcs/docker-compose.yml
+```
+
+Run it with:
+
+```bash
+make all
+```
+
+* ### _down_
+
+```make
+down:
+	@echo "Shutting down the app"
+	@docker compose -f srcs/docker-compose.yml down
+```
+
+This target stops and removes the containers and network created by Docker Compose.
+
+It does not remove Docker volumes or the persistent data stored in `~/data`.
+
+Run it with:
+
+```bash
+make down
+```
+
+* ### _setup_
+
+```make
+setup:
+	@echo "Setting up the environment"
+	@echo "\
+	DB_NAME=test\
+	\nDB_USER=usertest\
+\
+	\nWP_TITLE=Inception\
+	\nWP_ADMIN_USER=wpadtest\
+	\nWP_ADMIN_EMAIL=wpad@wp.wp\
+\
+	\nWP_USER=wptest\
+	\nWP_USER_EMAIL=wp@wp.wp" > ./srcs/.env
+	@mkdir -p ./secrets
+	@printf "" > ./secrets/db_password.txt
+	@printf "" > ./secrets/db_root_password.txt
+	@printf "" > ./secrets/wp_password.txt
+	@printf "" > ./secrets/wp_admin_password.txt
+	@chmod 600 ./secrets/db_password.txt ./secrets/db_root_password.txt ./secrets/wp_password.txt ./secrets/wp_admin_password.txt
+	@echo "Secret files were created empty. Fill them manually before running 'make all'."
+	@mkdir -p ~/data/mariadb
+	@mkdir -p ~/data/wordpress
+```
+
+This target prepares the local test environment.
+
+It creates:
+
+- `srcs/.env`, with non-sensitive configuration values.
+- `secrets/db_password.txt`, containing the database user password.
+- `secrets/db_root_password.txt`, containing the MariaDB root password.
+- `secrets/wp_password.txt`, containing the regular WordPress user password.
+- `secrets/wp_admin_password.txt`, containing the WordPress administrator password.
+- `~/data/mariadb`, used by the MariaDB volume.
+- `~/data/wordpress`, used by the WordPress volume.
+
+The password files are created empty on purpose, so no password is stored in the repository correction version.
+
+Before running `make all`, each secret file must be filled manually with the password it represents.
+
+For local testing only, the empty `printf ""` values in the `Makefile` can be temporarily replaced with real passwords so `make setup` creates the secret files already filled.
+
+This must never be committed or submitted with real passwords.
+
+The password files are created with `chmod 600` so only the owner can read and write them.
+
+Run it with:
+
+```bash
+make setup
+```
+
+* ### _check_
+
+```make
+check:
+	@test -f ./srcs/.env || (echo "Missing ./srcs/.env. Run 'make setup' first." && exit 1)
+	@test -f ./secrets/db_password.txt || (echo "Missing ./secrets/db_password.txt. Run 'make setup' first." && exit 1)
+	@test -f ./secrets/db_root_password.txt || (echo "Missing ./secrets/db_root_password.txt. Run 'make setup' first." && exit 1)
+	@test -f ./secrets/wp_password.txt || (echo "Missing ./secrets/wp_password.txt. Run 'make setup' first." && exit 1)
+	@test -f ./secrets/wp_admin_password.txt || (echo "Missing ./secrets/wp_admin_password.txt. Run 'make setup' first." && exit 1)
+	@test -s ./secrets/db_password.txt || (echo "Empty ./secrets/db_password.txt. Add a password before running 'make all'." && exit 1)
+	@test -s ./secrets/db_root_password.txt || (echo "Empty ./secrets/db_root_password.txt. Add a password before running 'make all'." && exit 1)
+	@test -s ./secrets/wp_password.txt || (echo "Empty ./secrets/wp_password.txt. Add a password before running 'make all'." && exit 1)
+	@test -s ./secrets/wp_admin_password.txt || (echo "Empty ./secrets/wp_admin_password.txt. Add a password before running 'make all'." && exit 1)
+	@mkdir -p ~/data/mariadb
+	@mkdir -p ~/data/wordpress
+```
+
+This target checks that the required `.env` and secret files exist before starting Docker Compose.
+
+It also checks that every secret file is non-empty.
+
+It prevents Docker from failing later with bind mount errors caused by missing secret files.
+
+It also ensures that the persistent data directories exist.
+
+Run it with:
+
+```bash
+make check
+```
+
+* ### _clean_
+
+```make
+clean:
+	@echo "Cleaning volumes, containers and images"
+	@docker compose -f srcs/docker-compose.yml down -v
+	@docker rm -vf mariadb
+	@docker rm -vf wordpress
+	@docker rm -vf nginx
+	@docker rmi -f srcs-mariadb
+	@docker rmi -f srcs-wordpress
+	@docker rmi -f srcs-nginx
+	@docker images
+	@docker ps -a
+```
+
+This target removes the Docker Compose environment, including named Docker volumes, containers, and the project images.
+
+It also prints the remaining Docker images and containers for debugging.
+
+Run it with:
+
+```bash
+make clean
+```
+
+* ### _fclean_
+
+```make
+fclean: clean
+	@echo "Cleaning env"
+	@rm -f ./srcs/.env
+	@rm -rf secrets
+	@sudo rm -rf ~/data/mariadb
+	@sudo rm -rf ~/data/wordpress
+```
+
+This target runs `clean` first, then removes the local environment files and host data directories.
+
+It deletes:
+
+- `srcs/.env`
+- `secrets/`
+- `~/data/mariadb`
+- `~/data/wordpress`
+
+Because the data directories may contain files created by containers, `sudo` is used to remove them.
+
+Run it with:
+
+```bash
+make fclean
+```
+
+* ### _re_
+
+```make
+re: fclean setup all
+```
+
+This target performs a full rebuild from a clean state.
+
+It runs:
+
+1. `fclean`
+2. `setup`
+3. `all`
+
+Run it with:
+
+```bash
+make re
+```
+
+---
+---
+---
+
+## Step 7: Test and run
 
 * ### _Util commands_
 ```bash
 docker compose down -v
 docker rmi srcs-mariadb:latest 
 docker rmi srcs-wordpress:latest 
-sudo rm -rf /home/jrubio-m/data/mariadb/*
-sudo rm -rf /home/jrubio-m/data/wordpress/*
+sudo rm -rf ~/data/mariadb/*
+sudo rm -rf ~/data/wordpress/*
 ```

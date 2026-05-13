@@ -13,7 +13,7 @@ echo "PREPARING WordPress DIRECTORY..."
 mkdir -p /var/www/html
 
 
-until mysql --protocol=TCP --ssl=0 -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" -e "SELECT 1;" > /dev/null 2>&1
+until mysql --protocol=TCP --ssl=0 -h"mariadb" -u"$DB_USER" -p"$DB_PASSWORD" -e "SELECT 1;" > /dev/null 2>&1
 do
 	echo "WAITING FOR MariaDB..."
     sleep 2
@@ -34,7 +34,7 @@ if [ ! -f /var/www/html/wp-config.php ]; then
         --dbname="$DB_NAME" \
         --dbuser="$DB_USER" \
         --dbpass="$DB_PASSWORD" \
-        --dbhost="$DB_HOST" \
+        --dbhost="mariadb" \
         --path=/var/www/html \
         --allow-root
 
@@ -47,7 +47,7 @@ if ! wp core is-installed --path=/var/www/html --allow-root; then
     echo "WordPress IS NOT INSTALLED. INSTALLING..."
 
     wp core install \
-        --url="$DOMAIN_NAME" \
+        --url="jrubio-m.42.fr" \
         --title="$WP_TITLE" \
         --admin_user="$WP_ADMIN_USER" \
         --admin_password="$WP_ADMIN_PASSWORD" \
