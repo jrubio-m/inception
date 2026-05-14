@@ -27,9 +27,9 @@ clean:
 	@docker rm -vf mariadb
 	@docker rm -vf wordpress
 	@docker rm -vf nginx
-	@docker rmi -f srcs-mariadb
-	@docker rmi -f srcs-wordpress
-	@docker rmi -f srcs-nginx
+	@docker rmi -f mariadb
+	@docker rmi -f wordpress
+	@docker rmi -f nginx
 	@docker images
 	@docker ps -a
 
