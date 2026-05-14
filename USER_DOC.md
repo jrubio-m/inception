@@ -48,13 +48,15 @@ The generated `srcs/.env` file contains non-sensitive values:
 
 ```env
 DB_NAME=wordpress
-DB_USER=jrubio-m
+DB_USER=user
+DB_HOST=mariadb
+DB_PORT=3306
 
 WP_TITLE=Inception
 WP_ADMIN_USER=jrubio-m-ad
 WP_ADMIN_EMAIL=wpad@example.ex
 
-WP_USER=wpuser
+WP_USER=jrubio-m
 WP_USER_EMAIL=wp@example.ex
 ```
 
@@ -140,6 +142,8 @@ The `.env` file stores only non-sensitive values:
 
 - `DB_NAME`: database name.
 - `DB_USER`: MariaDB user used by WordPress.
+- `DB_HOST`: MariaDB service hostname.
+- `DB_PORT`: MariaDB service port.
 - `WP_TITLE`: WordPress site title.
 - `WP_ADMIN_USER`: WordPress administrator username.
 - `WP_ADMIN_EMAIL`: WordPress administrator email.
