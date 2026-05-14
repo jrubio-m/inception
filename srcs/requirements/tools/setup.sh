@@ -12,7 +12,7 @@ cat > "$ENV_FILE" << EOF
 DB_NAME=wordpress
 DB_USER=user
 DB_HOST=mariadb
-DB_PORT=3308
+DB_PORT=3306
 
 WP_TITLE=Inception
 WP_ADMIN_USER=jrubio-m-ad
