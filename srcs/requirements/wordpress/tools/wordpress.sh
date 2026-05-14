@@ -13,7 +13,12 @@ echo "PREPARING WordPress DIRECTORY..."
 mkdir -p /var/www/html
 
 
-until mysql --protocol=TCP --ssl=0 -h"mariadb" -u"$DB_USER" -p"$DB_PASSWORD" -e "SELECT 1;" > /dev/null 2>&1
+until mysql --protocol=TCP --ssl=0 \
+	-h"$DB_HOST" \
+	-P $DB_PORT \
+	-u"$DB_USER" \
+	-p"$DB_PASSWORD" \
+	-e "SELECT 1;" > /dev/null 2>&1
 do
 	echo "WAITING FOR MariaDB..."
     sleep 2
@@ -27,14 +32,14 @@ if [ ! -f /var/www/html/wp-config.php ]; then
     wp core download \
         --path=/var/www/html \
         --allow-root
-
+    echo "wp core DOWNLOADED"
     echo "CREATING wp-config.php..."
 
     wp config create \
         --dbname="$DB_NAME" \
         --dbuser="$DB_USER" \
         --dbpass="$DB_PASSWORD" \
-        --dbhost="mariadb" \
+        --dbhost="$DB_HOST:$DB_PORT" \
         --path=/var/www/html \
         --allow-root
 

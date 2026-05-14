@@ -10,13 +10,15 @@ SECRETS_DIR="./secrets"
 
 cat > "$ENV_FILE" << EOF
 DB_NAME=wordpress
-DB_USER=jrubio-m
+DB_USER=user
+DB_HOST=mariadb
+DB_PORT=3308
 
 WP_TITLE=Inception
 WP_ADMIN_USER=jrubio-m-ad
 WP_ADMIN_EMAIL=wpad@example.ex
 
-WP_USER=wpuser
+WP_USER=jrubio-m
 WP_USER_EMAIL=wp@example.ex
 EOF
 
